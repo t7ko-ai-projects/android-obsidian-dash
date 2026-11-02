@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -40,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,17 +129,36 @@ private fun PinGrid(app: AppState) {
     var dragPos by remember { mutableStateOf(Offset.Zero) }
     var moved by remember { mutableFloatStateOf(0f) }
 
-    BoxWithConstraints(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    val scroll = rememberScrollState()
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val viewH = with(density) { maxHeight.toPx() }
         val cellWDp = maxWidth / columns
         val cellWPx = with(density) { cellWDp.toPx() }
-        // One empty row below the last icon, so an icon can always be dropped further down.
-        val rows = (pins.maxOfOrNull { it.cell(compact).row } ?: 0) + 2
+        // Rows fill the screen, keep one empty row below the last icon, and grow while an icon
+        // is dragged further down.
+        val dragRow = if (dragId != null) (dragPos.y / cellHPx).roundToInt() + 1 else 0
+        val rows = maxOf((pins.maxOfOrNull { it.cell(compact).row } ?: 0) + 2, (viewH / cellHPx).toInt() + 1, dragRow + 1)
         fun origin(c: Cell) = Offset(c.col * cellWPx, c.row * cellHPx)
         fun cellAt(pos: Offset) = Cell(
             (pos.x / cellWPx).roundToInt().coerceIn(0, columns - 1),
             (pos.y / cellHPx).roundToInt().coerceIn(0, rows - 1),
         )
 
+        // Scroll the grid while an icon is held near the top or bottom edge.
+        LaunchedEffect(dragId) {
+            while (dragId != null) {
+                val y = dragPos.y + cellHPx / 2 - scroll.value
+                val step = when {
+                    y > viewH - 140f -> 16f
+                    y < 140f && scroll.value > 0 -> -16f
+                    else -> 0f
+                }
+                if (step != 0f) dragPos += Offset(0f, scroll.scrollBy(step))
+                delay(16)
+            }
+        }
+
+        Box(Modifier.fillMaxSize().verticalScroll(scroll)) {
         Box(Modifier.fillMaxWidth().height(cellH * rows)) {
             if (dragId != null) {
                 val t = origin(cellAt(dragPos))
@@ -196,6 +218,7 @@ private fun PinGrid(app: AppState) {
                     }
                 }
             }
+        }
         }
     }
 
