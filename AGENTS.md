@@ -41,7 +41,9 @@ navigation), `Dashboard.kt` (grid and drag), `Screens.kt` (search, settings).
   to `/sdcard/Documents`, pick it in the app's folder picker. Obsidian is not installed on
   the emulator, so the tap only fires the intent (check `logcat` for `ActivityTaskManager`).
   Storage is flaky for a while after boot: wait before pushing files.
-- Opening notes in real Obsidian was tried by the user on the phone and works.
+- Tried by the user on the phone and working: opening notes in real Obsidian (both the
+  Advanced URI link and the plain link), dragging icons by finger, and the speed of reading
+  a real vault.
 
 ## Releases
 
