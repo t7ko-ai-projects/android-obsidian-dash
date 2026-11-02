@@ -73,12 +73,24 @@ class AppState(private val context: Context) {
         }
     }
 
-    fun renameVault(vault: Vault, name: String) {
-        val i = vaults.indexOf(vault)
-        if (i >= 0 && name.isNotBlank()) {
-            vaults[i] = vault.copy(name = name.trim())
+    private fun updateVault(uri: String, change: (Vault) -> Vault) {
+        val i = vaults.indexOfFirst { it.uri == uri }
+        if (i >= 0) {
+            vaults[i] = change(vaults[i])
             saveVaults()
         }
+    }
+
+    fun renameVault(vault: Vault, name: String) {
+        if (name.isNotBlank()) updateVault(vault.uri) { it.copy(name = name.trim()) }
+    }
+
+    /** A hand-made choice; [autoAdvUri] hands the decision back to the scan. */
+    fun setAdvUri(vault: Vault, on: Boolean) = updateVault(vault.uri) { it.copy(advUri = on, advManual = true) }
+
+    suspend fun autoAdvUri(vault: Vault) {
+        updateVault(vault.uri) { it.copy(advManual = false) }
+        rescan(vaults.first { it.uri == vault.uri })
     }
 
     fun removeVault(vault: Vault) {
@@ -105,6 +117,12 @@ class AppState(private val context: Context) {
             if (found != null) {
                 notes[vault.uri] = found
                 store.cacheNotes(vault.uri, found)
+                if (!vault.advManual) {
+                    val detected = withContext(Dispatchers.IO) {
+                        runCatching { VaultScanner.detectAdvancedUri(context, vault) }.getOrNull()
+                    }
+                    if (detected != null) updateVault(vault.uri) { it.copy(advUri = detected) }
+                }
             } else {
                 toast("Cannot read the vault “${vault.name}”. Add it again in Settings.")
             }
@@ -129,7 +147,7 @@ class AppState(private val context: Context) {
             ?: return toast("The vault of this note is no longer in Settings.")
         try {
             context.startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse(ObsidianLink.open(vault.name, pin.path)))
+                Intent(Intent.ACTION_VIEW, Uri.parse(ObsidianLink.open(vault.name, pin.path, vault.advUri)))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         } catch (e: ActivityNotFoundException) {

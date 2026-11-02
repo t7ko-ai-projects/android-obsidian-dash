@@ -4,8 +4,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
 
-/** A vault the user granted access to. [name] is what Obsidian calls it (normally the folder name). */
-data class Vault(val uri: String, val name: String)
+/**
+ * A vault the user granted access to. [name] is what Obsidian calls it (normally the folder name).
+ * [advUri]: notes open through the Advanced URI plugin; found by reading the vault's plugin list
+ * on each scan, unless [advManual] says the user set it by hand.
+ */
+data class Vault(val uri: String, val name: String, val advUri: Boolean = true, val advManual: Boolean = false)
 
 /** A note found in a vault. [path] is relative to the vault root and keeps the `.md` extension. */
 data class Note(val path: String, val modified: Long) {
@@ -82,10 +86,16 @@ object Layout {
 
 object Format {
     fun vaultsToJson(vaults: List<Vault>): String = JSONArray().also { a ->
-        vaults.forEach { a.put(JSONObject().put("uri", it.uri).put("name", it.name)) }
+        vaults.forEach {
+            a.put(
+                JSONObject().put("uri", it.uri).put("name", it.name).put("adv", it.advUri).put("manual", it.advManual),
+            )
+        }
     }.toString()
 
-    fun vaultsFromJson(text: String?): List<Vault> = parse(text) { Vault(it.getString("uri"), it.getString("name")) }
+    fun vaultsFromJson(text: String?): List<Vault> = parse(text) {
+        Vault(it.getString("uri"), it.getString("name"), it.optBoolean("adv", true), it.optBoolean("manual", false))
+    }
 
     fun pinsToJson(pins: List<Pin>): String = JSONArray().also { a ->
         pins.forEach {
@@ -128,8 +138,17 @@ object ObsidianLink {
      * Advanced URI link to a note. `openmode=true` opens a new tab only when the note is not
      * open yet; otherwise Obsidian focuses the tab that already shows it.
      */
-    fun open(vaultName: String, notePath: String): String =
-        "obsidian://adv-uri?vault=${enc(vaultName)}&filepath=${enc(notePath.removeSuffix(".md"))}&openmode=true"
+    fun open(vaultName: String, notePath: String, advUri: Boolean = true): String {
+        val file = enc(notePath.removeSuffix(".md"))
+        return if (advUri) "obsidian://adv-uri?vault=${enc(vaultName)}&filepath=$file&openmode=true"
+        else "obsidian://open?vault=${enc(vaultName)}&file=$file"
+    }
+
+    /** Whether the plugin list of a vault (`.obsidian/community-plugins.json`) names Advanced URI. */
+    fun listsAdvancedUri(communityPluginsJson: String): Boolean = runCatching {
+        val a = JSONArray(communityPluginsJson)
+        (0 until a.length()).any { a.optString(it) == "obsidian-advanced-uri" }
+    }.getOrDefault(false)
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
 }

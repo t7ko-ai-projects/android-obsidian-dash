@@ -152,6 +152,16 @@ fun SettingsScreen(app: AppState, onAddVault: () -> Unit) {
                             "${app.notes[v.uri].orEmpty().size} notes" + if (v.uri in app.scanning) ", reading…" else "",
                             style = MaterialTheme.typography.bodySmall,
                         )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(checked = v.advUri, onCheckedChange = { app.setAdvUri(v, it) })
+                            Text(
+                                if (v.advUri) "  Advanced URI" else "  Plain links",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                            if (v.advManual) {
+                                TextButton(onClick = { scope.launch { app.autoAdvUri(v) } }) { Text("Auto") }
+                            }
+                        }
                     }
                     IconButton(onClick = { renaming = v }) { Icon(Icons.Filled.Edit, "Rename") }
                     IconButton(onClick = { scope.launch { app.rescan(v) } }) { Icon(Icons.Filled.Refresh, "Rescan") }
@@ -160,7 +170,9 @@ fun SettingsScreen(app: AppState, onAddVault: () -> Unit) {
             }
             Button(onClick = onAddVault, modifier = Modifier.padding(top = 12.dp)) { Text("Add a vault") }
             Text(
-                "Notes open through the Advanced URI plugin, which must be installed in each vault.",
+                "Notes open through the Advanced URI plugin when a vault has it enabled (found by reading " +
+                    "the vault's plugin list; the switch overrides that), and with Obsidian's own link otherwise. " +
+                    "Only the Advanced URI link focuses a tab that already shows the note.",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 16.dp),
             )

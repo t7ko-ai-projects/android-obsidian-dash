@@ -51,6 +51,28 @@ object VaultScanner {
         return Vault(tree.toString(), name.ifEmpty { "vault" })
     }
 
+    /**
+     * Whether Advanced URI is enabled in the vault: true or false when its `.obsidian` folder can
+     * be read, null when there is none (so the old setting stays).
+     */
+    fun detectAdvancedUri(context: Context, vault: Vault): Boolean? {
+        val tree = Uri.parse(vault.uri)
+        val rootId = DocumentsContract.getTreeDocumentId(tree)
+        val columns = arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+        fun child(parentId: String, name: String): String? {
+            val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parentId)
+            context.contentResolver.query(children, columns, null, null, null)?.use { c ->
+                while (c.moveToNext()) if (c.getString(1) == name) return c.getString(0)
+            }
+            return null
+        }
+        val config = child(rootId, ".obsidian") ?: return null
+        val file = child(config, "community-plugins.json") ?: return false
+        val uri = DocumentsContract.buildDocumentUriUsingTree(tree, file)
+        val text = context.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } ?: return null
+        return ObsidianLink.listsAdvancedUri(text)
+    }
+
     /** All `.md` notes below the vault root, skipping hidden folders such as `.obsidian`. */
     fun scan(context: Context, vault: Vault): List<Note> {
         val tree = Uri.parse(vault.uri)

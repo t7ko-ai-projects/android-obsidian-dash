@@ -18,6 +18,13 @@ An Android home-screen-like dashboard of quick links to favourite Obsidian notes
   Advanced URI plugin, `openmode=true` opens a new tab only if the note is not already
   open, otherwise focuses the existing tab (`false` would reuse the current pane instead).
   The vault name is the picked folder's name, editable in Settings.
+- Per vault, `Vault.advUri` picks that link or Obsidian's own `obsidian://open?vault=&file=`
+  (which does not focus an already open tab). Each scan sets it from the vault's
+  `.obsidian/community-plugins.json` (lists `obsidian-advanced-uri`) unless the user set the
+  switch by hand (`advManual`; the "Auto" button hands it back). No `.obsidian` folder
+  readable: the old value stays.
+- The grid has exactly the rows that fit the screen, sharing its height, so it does not
+  scroll; only pins placed lower (say after a screen size change) add rows and scroll.
 
 Machine-specific notes are in the git-ignored `AGENTS.local.md`. Keep paths and other
 details of one machine out of tracked files. Build setup follows the sibling app
@@ -27,11 +34,17 @@ Code: `Model.kt` (data, JSON formats, link, fuzzy matching: all unit-tested),
 `Storage.kt` (SharedPreferences, cache, vault scan), `MainActivity.kt` (state and
 navigation), `Dashboard.kt` (grid and drag), `Screens.kt` (search, settings).
 
-## Not done yet
+## Testing
 
-- Tried on the emulator (2026-11-02, small vault): adding a vault, hidden-folder skip,
-  fuzzy search, pinning, drag reorder (`adb shell input draganddrop`), rename, remove,
-  persistence and the tap intent all work. Obsidian is not installed there, so the
-  link opening in Obsidian itself, drag feel on a touchscreen and scan speed on a large
-  vault are unchecked.
-- No release key, `scripts/release.ps1` or GitHub repository yet.
+- Emulator (see the notes one folder up): `scripts/emulator-ui.py` taps by text;
+  `adb shell input draganddrop x1 y1 x2 y2 ms` does a long-press drag. Push a sample vault
+  to `/sdcard/Documents`, pick it in the app's folder picker. Obsidian is not installed on
+  the emulator, so the tap only fires the intent (check `logcat` for `ActivityTaskManager`).
+  Storage is flaky for a while after boot: wait before pushing files.
+- Opening notes in real Obsidian was tried by the user on the phone and works.
+
+## Releases
+
+`scripts/release.ps1` builds, tags `v<versionName>`, pushes and creates the GitHub release
+(Obtainium reads it). Raise `versionName` and `versionCode` in `app/build.gradle.kts` first.
+The README screenshots are in `docs/screenshots` (emulator, demo vault).

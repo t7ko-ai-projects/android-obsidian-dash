@@ -13,13 +13,24 @@ class ModelTest {
             "obsidian://adv-uri?vault=My%20Vault&filepath=Daily%2FToday%20%26%20more&openmode=true",
             ObsidianLink.open("My Vault", "Daily/Today & more.md"),
         )
+        assertEquals(
+            "obsidian://open?vault=My%20Vault&file=Daily%2FToday%20%26%20more",
+            ObsidianLink.open("My Vault", "Daily/Today & more.md", advUri = false),
+        )
+    }
+
+    @Test
+    fun detectsAdvancedUriInPluginList() {
+        assertTrue(ObsidianLink.listsAdvancedUri("""["dataview","obsidian-advanced-uri"]"""))
+        assertTrue(!ObsidianLink.listsAdvancedUri("""["dataview"]"""))
+        assertTrue(!ObsidianLink.listsAdvancedUri("not json"))
     }
 
     @Test
     fun pinsAndVaultsRoundTrip() {
         val pins = listOf(Pin("1", "content://x", "a/b.md", "B \"quoted\""))
         assertEquals(pins, Format.pinsFromJson(Format.pinsToJson(pins)))
-        val vaults = listOf(Vault("content://x", "V"))
+        val vaults = listOf(Vault("content://x", "V"), Vault("content://y", "W", advUri = false, advManual = true))
         assertEquals(vaults, Format.vaultsFromJson(Format.vaultsToJson(vaults)))
         assertTrue(Format.pinsFromJson("garbage").isEmpty())
     }
