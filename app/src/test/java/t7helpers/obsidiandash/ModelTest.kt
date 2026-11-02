@@ -44,4 +44,31 @@ class ModelTest {
         assertEquals("Recipes/Pancakes.md", Fuzzy.search("pnck", notes).single().path)
         assertEquals("Recipes/Pancakes.md", Fuzzy.search("", notes).first().path)
     }
+
+    private fun pin(id: String, n: Cell = Cell(-1, -1)) = Pin(id, "v", id, id, normal = n)
+
+    @Test
+    fun layoutPlacesUnplacedPinsAndFixesClashes() {
+        val placed = Layout.normalize(listOf(pin("a"), pin("b", Cell(1, 0)), pin("c", Cell(1, 0)), pin("d", Cell(4, 0))))
+        assertEquals(listOf(Cell(0, 0), Cell(1, 0), Cell(2, 0), Cell(3, 0)), placed.map { it.normal })
+        assertEquals(listOf(Cell(0, 0), Cell(1, 0), Cell(2, 0), Cell(3, 0)), placed.map { it.compact })
+    }
+
+    @Test
+    fun movingToAFreeCellLeavesOthersAndOccupiedCellSwaps() {
+        val pins = Layout.normalize(listOf(pin("a"), pin("b"), pin("c")))
+        val free = Layout.move(pins, "a", false, Cell(3, 5))
+        assertEquals(listOf(Cell(3, 5), Cell(1, 0), Cell(2, 0)), free.map { it.normal })
+        val swap = Layout.move(pins, "a", false, Cell(2, 0))
+        assertEquals(listOf(Cell(2, 0), Cell(1, 0), Cell(0, 0)), swap.map { it.normal })
+        assertEquals(pins.map { it.compact }, swap.map { it.compact })
+    }
+
+    @Test
+    fun oldPinsWithoutCellsStillLoad() {
+        val old = """[{"id":"1","vault":"v","path":"p","label":"l"}]"""
+        assertEquals(Cell(-1, -1), Format.pinsFromJson(old).single().normal)
+        val pins = listOf(pin("a", Cell(2, 3)))
+        assertEquals(pins, Format.pinsFromJson(Format.pinsToJson(pins)))
+    }
 }

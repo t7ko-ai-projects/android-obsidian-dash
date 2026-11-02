@@ -37,13 +37,29 @@ enum class Screen { Dashboard, Search, Settings }
 class AppState(private val context: Context) {
     private val store = Store(context)
     val vaults = mutableStateListOf<Vault>().apply { addAll(store.vaults()) }
-    val pins = mutableStateListOf<Pin>().apply { addAll(store.pins()) }
+    val pins = mutableStateListOf<Pin>().apply { addAll(Layout.normalize(store.pins())) }
+    var compact by mutableStateOf(store.compact)
+        private set
     val notes = mutableStateMapOf<String, List<Note>>()
     val scanning = mutableStateListOf<String>()
     var screen by mutableStateOf(Screen.Dashboard)
 
     init {
         vaults.forEach { notes[it.uri] = store.cachedNotes(it.uri) }
+    }
+
+    fun toggleCompact() = useCompact(!compact)
+
+    fun useCompact(on: Boolean) {
+        compact = on
+        store.compact = on
+    }
+
+    fun movePin(id: String, target: Cell) {
+        val moved = Layout.move(pins.toList(), id, compact, target)
+        pins.clear()
+        pins.addAll(moved)
+        savePins()
     }
 
     fun savePins() = store.savePins(pins.toList())
@@ -99,7 +115,11 @@ class AppState(private val context: Context) {
 
     fun pin(vault: Vault, note: Note) {
         if (pins.none { it.vaultUri == vault.uri && it.path == note.path }) {
-            pins += Pin(store.newPinId(), vault.uri, note.path, note.title)
+            val fresh = Pin(store.newPinId(), vault.uri, note.path, note.title)
+            pins += fresh.copy(
+                normal = Layout.firstFree(Layout.NORMAL_COLUMNS, pins.map { it.normal }),
+                compact = Layout.firstFree(Layout.COMPACT_COLUMNS, pins.map { it.compact }),
+            )
             savePins()
         }
     }

@@ -12,8 +12,73 @@ data class Note(val path: String, val modified: Long) {
     val title: String get() = path.substringAfterLast('/').removeSuffix(".md")
 }
 
-/** A note on the dashboard. */
-data class Pin(val id: String, val vaultUri: String, val path: String, val label: String)
+/** A grid cell; (-1, -1) means "not placed yet". */
+data class Cell(val col: Int, val row: Int) {
+    val placed: Boolean get() = col >= 0 && row >= 0
+}
+
+/**
+ * A note on the dashboard. Each view (4 columns, compact 5 columns) has its own cell for the
+ * pin, so switching views never loses a hand-made arrangement.
+ */
+data class Pin(
+    val id: String,
+    val vaultUri: String,
+    val path: String,
+    val label: String,
+    val normal: Cell = Cell(-1, -1),
+    val compact: Cell = Cell(-1, -1),
+) {
+    fun cell(compactView: Boolean) = if (compactView) compact else normal
+    fun at(compactView: Boolean, c: Cell) = if (compactView) copy(compact = c) else copy(normal = c)
+}
+
+object Layout {
+    const val NORMAL_COLUMNS = 4
+    const val COMPACT_COLUMNS = 5
+    fun columns(compactView: Boolean) = if (compactView) COMPACT_COLUMNS else NORMAL_COLUMNS
+
+    /** First empty cell, reading left to right and top to bottom. */
+    fun firstFree(columns: Int, taken: Collection<Cell>): Cell {
+        val set = taken.toSet()
+        var i = 0
+        while (true) {
+            val c = Cell(i % columns, i / columns)
+            if (c !in set) return c
+            i++
+        }
+    }
+
+    /** Places pins that have no valid, unshared cell in a view, in list order. */
+    fun normalize(pins: List<Pin>): List<Pin> {
+        var out = pins
+        for (compactView in listOf(false, true)) {
+            val cols = columns(compactView)
+            val taken = HashSet<Cell>()
+            out = out.map { p ->
+                val c = p.cell(compactView)
+                if (c.placed && c.col < cols && taken.add(c)) p else p.at(compactView, Cell(-1, -1))
+            }
+            out = out.map { p ->
+                if (p.cell(compactView).placed) p
+                else firstFree(cols, taken).also { taken += it }.let { p.at(compactView, it) }
+            }
+        }
+        return out
+    }
+
+    /** Moves [id] to [target]; a pin already there takes the vacated cell, so nothing shifts. */
+    fun move(pins: List<Pin>, id: String, compactView: Boolean, target: Cell): List<Pin> {
+        val from = pins.firstOrNull { it.id == id }?.cell(compactView) ?: return pins
+        return pins.map {
+            when {
+                it.id == id -> it.at(compactView, target)
+                it.cell(compactView) == target -> it.at(compactView, from)
+                else -> it
+            }
+        }
+    }
+}
 
 object Format {
     fun vaultsToJson(vaults: List<Vault>): String = JSONArray().also { a ->
@@ -24,12 +89,21 @@ object Format {
 
     fun pinsToJson(pins: List<Pin>): String = JSONArray().also { a ->
         pins.forEach {
-            a.put(JSONObject().put("id", it.id).put("vault", it.vaultUri).put("path", it.path).put("label", it.label))
+            a.put(
+                JSONObject().put("id", it.id).put("vault", it.vaultUri).put("path", it.path).put("label", it.label)
+                    .put("nc", it.normal.col).put("nr", it.normal.row)
+                    .put("cc", it.compact.col).put("cr", it.compact.row),
+            )
         }
     }.toString()
 
     fun pinsFromJson(text: String?): List<Pin> =
-        parse(text) { Pin(it.getString("id"), it.getString("vault"), it.getString("path"), it.getString("label")) }
+        parse(text) {
+            Pin(
+                it.getString("id"), it.getString("vault"), it.getString("path"), it.getString("label"),
+                Cell(it.optInt("nc", -1), it.optInt("nr", -1)), Cell(it.optInt("cc", -1), it.optInt("cr", -1)),
+            )
+        }
 
     private fun <T> parse(text: String?, f: (JSONObject) -> T): List<T> {
         if (text.isNullOrBlank()) return emptyList()

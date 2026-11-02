@@ -7,8 +7,13 @@ An Android home-screen-like dashboard of quick links to favourite Obsidian notes
   hidden folders) and caches the list per vault in `filesDir`; it rescans at start.
 - "+" opens a fuzzy search over the notes (every word must match, in order, in the title
   or path; the empty query shows recently changed notes). Picking a note pins it.
-- The dashboard is a 4-column grid. Long press then drag rearranges; a long press
+- The dashboard is a grid with free placement: long press then drag drops an icon on any
+  cell (empty cells stay empty; dropping on an occupied cell swaps the two). A long press
   without moving opens Rename / Remove. A tap opens the note.
+- Two views, 4 columns and a compact one with 5 columns and smaller icons (toggle in the
+  top bar and in Settings). Each pin keeps a separate cell per view (`Pin.normal`,
+  `Pin.compact`), so neither arrangement is lost when switching. Pins saved before cells
+  existed get cells in list order (`Layout.normalize`).
 - Opening: `obsidian://adv-uri?vault=<name>&filepath=<path>&openmode=true`. With the
   Advanced URI plugin, `openmode=true` opens a new tab only if the note is not already
   open, otherwise focuses the existing tab (`false` would reuse the current pane instead).

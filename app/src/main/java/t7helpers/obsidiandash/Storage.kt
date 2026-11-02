@@ -17,6 +17,10 @@ class Store(private val context: Context) {
     fun pins(): List<Pin> = Format.pinsFromJson(prefs.getString("pins", null))
     fun savePins(p: List<Pin>) = prefs.edit().putString("pins", Format.pinsToJson(p)).apply()
 
+    var compact: Boolean
+        get() = prefs.getBoolean("compact", false)
+        set(v) = prefs.edit().putBoolean("compact", v).apply()
+
     fun newPinId(): String = UUID.randomUUID().toString()
 
     private fun cacheFile(vaultUri: String) = File(context.filesDir, "index-${vaultUri.hashCode()}.txt")

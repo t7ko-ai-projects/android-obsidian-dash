@@ -23,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -129,6 +130,13 @@ fun SettingsScreen(app: AppState, onAddVault: () -> Unit) {
         )
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Compact view", style = MaterialTheme.typography.titleMedium)
+                    Text("Five columns of smaller icons.", style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(checked = app.compact, onCheckedChange = { app.useCompact(it) })
+            }
             Text("Vaults", style = MaterialTheme.typography.titleMedium)
             Text(
                 "Pick the vault folder itself. The name must match the vault's name in Obsidian, " +

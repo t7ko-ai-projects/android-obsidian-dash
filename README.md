@@ -4,7 +4,8 @@ A home-screen-style dashboard of icons, one per Obsidian note you open often.
 
 - Add a vault folder in Settings (read-only access).
 - Tap **+**, type part of a note's name or path (fuzzy), tap the result: it is on the dashboard.
-- Long press an icon and drag to rearrange; long press without moving to rename or remove.
+- Long press an icon and drag it to any free cell (dropping on another icon swaps them); long press without moving to rename or remove.
+- The list icon in the top bar switches to a compact view with 5 columns; each view keeps its own arrangement.
 - Tap an icon to open the note in Obsidian. If the note is already open in a tab, that tab is focused.
 
 Requires the [Advanced URI](https://github.com/Vinzent03/obsidian-advanced-uri) plugin in the vault.
