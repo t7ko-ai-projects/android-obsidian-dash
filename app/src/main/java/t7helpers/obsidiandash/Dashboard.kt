@@ -123,8 +123,7 @@ private fun PinGrid(app: AppState) {
     val compact = app.compact
     val columns = Layout.columns(compact)
     val density = LocalDensity.current
-    val cellH = if (compact) 92.dp else 108.dp
-    val cellHPx = with(density) { cellH.toPx() }
+    val nominalCellH = if (compact) 92.dp else 108.dp
     var dragId by remember { mutableStateOf<String?>(null) }
     var dragPos by remember { mutableStateOf(Offset.Zero) }
     var moved by remember { mutableFloatStateOf(0f) }
@@ -134,15 +133,21 @@ private fun PinGrid(app: AppState) {
         val viewH = with(density) { maxHeight.toPx() }
         val cellWDp = maxWidth / columns
         val cellWPx = with(density) { cellWDp.toPx() }
-        // Rows fill the screen, keep one empty row below the last icon, and grow while an icon
-        // is dragged further down.
-        val dragRow = if (dragId != null) (dragPos.y / cellHPx).roundToInt() + 1 else 0
-        val rows = maxOf((pins.maxOfOrNull { it.cell(compact).row } ?: 0) + 2, (viewH / cellHPx).toInt() + 1, dragRow + 1)
+        // The rows that fit the screen share its height exactly, so the grid does not scroll.
+        // Only icons placed below that (say after a change of screen size) add rows and scroll.
+        val nominalPx = with(density) { nominalCellH.toPx() }
+        val fitRows = maxOf(1, (viewH / nominalPx).toInt())
+        val rows = maxOf(fitRows, (pins.maxOfOrNull { it.cell(compact).row } ?: 0) + 1)
+        val overflow = rows > fitRows
+        val cellHPx = if (overflow) nominalPx else viewH / fitRows
+        val cellH = with(density) { cellHPx.toDp() }
         fun origin(c: Cell) = Offset(c.col * cellWPx, c.row * cellHPx)
         fun cellAt(pos: Offset) = Cell(
             (pos.x / cellWPx).roundToInt().coerceIn(0, columns - 1),
             (pos.y / cellHPx).roundToInt().coerceIn(0, rows - 1),
         )
+
+        LaunchedEffect(overflow) { if (!overflow) scroll.scrollTo(0) }
 
         // Scroll the grid while an icon is held near the top or bottom edge.
         LaunchedEffect(dragId) {
@@ -158,7 +163,7 @@ private fun PinGrid(app: AppState) {
             }
         }
 
-        Box(Modifier.fillMaxSize().verticalScroll(scroll)) {
+        Box(Modifier.fillMaxSize().verticalScroll(scroll, enabled = overflow)) {
         Box(Modifier.fillMaxWidth().height(cellH * rows)) {
             if (dragId != null) {
                 val t = origin(cellAt(dragPos))
