@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -137,6 +138,17 @@ fun SettingsScreen(app: AppState, onAddVault: () -> Unit) {
                 }
                 Switch(checked = app.compact, onCheckedChange = { app.useCompact(it) })
             }
+            Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Reuse the open Obsidian screen", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Experiment: hands the link to Obsidian's running screen instead of starting it " +
+                            "with the link, which may stop Android reopening the same note later.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Switch(checked = app.reuseScreen, onCheckedChange = { app.useReuseScreen(it) })
+            }
             Text("Vaults", style = MaterialTheme.typography.titleMedium)
             Text(
                 "Pick the vault folder itself. The name must match the vault's name in Obsidian, " +
@@ -173,6 +185,15 @@ fun SettingsScreen(app: AppState, onAddVault: () -> Unit) {
                 "Notes open through the Advanced URI plugin when a vault has it enabled (found by reading " +
                     "the vault's plugin list; the switch overrides that), and with Obsidian's own link otherwise. " +
                     "Only the Advanced URI link focuses a tab that already shows the note.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+            val context = LocalContext.current
+            val version = remember {
+                runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
+            }
+            Text(
+                "Obsidian Dash $version",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 16.dp),
             )

@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,6 +47,14 @@ class AppState(private val context: Context) {
 
     init {
         vaults.forEach { notes[it.uri] = store.cachedNotes(it.uri) }
+    }
+
+    var reuseScreen by mutableStateOf(store.reuseScreen)
+        private set
+
+    fun useReuseScreen(on: Boolean) {
+        reuseScreen = on
+        store.reuseScreen = on
     }
 
     fun toggleCompact() = useCompact(!compact)
@@ -148,7 +157,14 @@ class AppState(private val context: Context) {
         try {
             context.startActivity(
                 Intent(Intent.ACTION_VIEW, Uri.parse(ObsidianLink.open(vault.name, pin.path, vault.advUri)))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    .addFlags(
+                        if (reuseScreen) {
+                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                        } else {
+                            Intent.FLAG_ACTIVITY_NEW_TASK
+                        },
+                    ),
             )
         } catch (e: ActivityNotFoundException) {
             toast("Obsidian is not installed.")
@@ -161,6 +177,9 @@ class AppState(private val context: Context) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Status bar icons follow the system dark mode, like the app's colors; the window theme
+        // alone left them white on the light background.
+        enableEdgeToEdge()
         setContent {
             AppTheme {
                 Surface(color = MaterialTheme.colorScheme.background) { Root() }

@@ -21,6 +21,10 @@ class Store(private val context: Context) {
         get() = prefs.getBoolean("compact", false)
         set(v) = prefs.edit().putBoolean("compact", v).apply()
 
+    var reuseScreen: Boolean
+        get() = prefs.getBoolean("reuseScreen", false)
+        set(v) = prefs.edit().putBoolean("reuseScreen", v).apply()
+
     fun newPinId(): String = UUID.randomUUID().toString()
 
     private fun cacheFile(vaultUri: String) = File(context.filesDir, "index-${vaultUri.hashCode()}.txt")
